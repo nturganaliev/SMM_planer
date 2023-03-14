@@ -1,3 +1,5 @@
+from typing import Iterator
+
 import httplib2
 import apiclient
 from oauth2client.service_account import ServiceAccountCredentials
@@ -7,7 +9,7 @@ from .classes import Post
 
 
 @retry_on_network_error
-def get_waiting_posts(credentials_file: str, spreadsheet_id: str):
+def get_waiting_posts(credentials_file: str, spreadsheet_id: str) -> Iterator[Post]:
     credentials = ServiceAccountCredentials.from_json_keyfile_name(
         credentials_file,
         ['https://www.googleapis.com/auth/spreadsheets',
@@ -20,5 +22,15 @@ def get_waiting_posts(credentials_file: str, spreadsheet_id: str):
         range='Plan!A3:L10000',
         majorDimension='ROWS'
     ).execute()
-    all_posts = (Post.parse_row(post) for post in plan_table['values'])
+    all_posts = get_all_posts(plan_table['values'])
     return filter(lambda post: post.is_waiting(), all_posts)
+
+
+def get_all_posts(posts_rows):
+    for post in posts_rows:
+        try:
+            post = Post.parse_row(post)
+        except (IndexError, ValueError):
+            continue
+        else:
+            yield post
