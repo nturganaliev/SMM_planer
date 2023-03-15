@@ -188,3 +188,4 @@ fabric.properties
 *.json
 
 access_tokens.env
+.env
