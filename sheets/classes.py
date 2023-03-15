@@ -13,8 +13,8 @@ class Post(NamedTuple):
     ok_publish_at: datetime
     ok_status: str
 
-    @staticmethod
-    def parse_row(post_row: list | tuple):
+    @classmethod
+    def parse_row(cls, post_row: list | tuple):
         """
         @post_row: Строка поста из таблицы Google Sheets. Состоит из 12 ячеек:
         Название поста | Текст поста | Ссылка на картинку |
@@ -41,7 +41,7 @@ class Post(NamedTuple):
         tg_status, tg_publish_date, tg_publish_time, *ok_publishing = tg_ok_publishing
         ok_status, ok_publish_date, ok_publish_time = ok_publishing
 
-        return Post(
+        return cls(
             title=title,
             text=text,
             img_url=img_url,
