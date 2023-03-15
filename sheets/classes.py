@@ -5,7 +5,7 @@ from typing import NamedTuple
 class Event(NamedTuple):
     line: int
     title: str
-    text: str
+    text_url: str
     img_url: str
     posts: list
 

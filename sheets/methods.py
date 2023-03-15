@@ -1,6 +1,8 @@
+import json
 import os
 from pprint import pprint
 from typing import Iterator
+from urllib.parse import urlparse
 
 import httplib2
 import apiclient
@@ -17,18 +19,19 @@ _spreadsheet_id = os.environ['GOOGLE_SHEETS_SPREADSHEET_ID']
 
 
 @retry_on_network_error
-def login() -> Service:
+def login(service_name: str, version: str) -> Service:
     credentials = ServiceAccountCredentials.from_json_keyfile_name(
         _credentials_file,
         ['https://www.googleapis.com/auth/spreadsheets',
+         'https://www.googleapis.com/auth/documents.readonly',
          'https://www.googleapis.com/auth/drive'])
     http_auth = credentials.authorize(httplib2.Http())
-    return apiclient.discovery.build('sheets', 'v4', http=http_auth)
+    return apiclient.discovery.build(service_name, version, http=http_auth)
 
 
 @retry_on_network_error
 def get_active_events() -> Iterator[Event]:
-    service = login()
+    service = login('sheets', version='v4')
     plan_table = service.spreadsheets().values().get(
         spreadsheetId=_spreadsheet_id,
         range='Plan!A3:L10000',
@@ -38,8 +41,20 @@ def get_active_events() -> Iterator[Event]:
 
 
 @retry_on_network_error
+def get_post_text(text_url: str) -> str:
+    service = login('docs', version='v1')
+    parsed_url = urlparse(text_url)
+    document_id = parsed_url.path.lstrip('/document/d/').split('/')[0]
+    document = service.documents().get(documentId=document_id).execute()
+    with open('doc.json', 'w')as file:
+        json.dump(document, file)
+    # pprint(document.get('title'))
+    # pprint(document.get('content'))
+
+
+@retry_on_network_error
 def set_post_status(event: Event, social: str, status: str):
-    service = login()
+    service = login('sheets', version='v4')
 
     status_columns = {'vk': 'D', 'tg': 'G', 'ok': 'J'}
     column = status_columns[social]
@@ -56,7 +71,7 @@ def set_post_status(event: Event, social: str, status: str):
 
 @retry_on_network_error
 def renew_dashboard():
-    service = login()
+    service = login('sheets', version='v4')
     pass
 
 
@@ -64,12 +79,12 @@ def parse_table_rows(table_rows: list[list]) -> Iterator[Event]:
     for row_num, row in enumerate(table_rows):
         if empty_cell_num := 12 - len(row):  # добавляем пустые ячейки в конце строки, если нужно
             row.extend([''] * empty_cell_num)
-        title, text, img_url, *vk_tg_ok_publishing = row
+        title, text_url, img_url, *vk_tg_ok_publishing = row
         vk_status, vk_publish_date, vk_publish_time, *tg_ok_publishing = vk_tg_ok_publishing
         tg_status, tg_publish_date, tg_publish_time, *ok_publishing = tg_ok_publishing
         ok_status, ok_publish_date, ok_publish_time = ok_publishing
 
-        event = Event(line=row_num, title=title, text=text, img_url=img_url, posts=list())
+        event = Event(line=row_num, title=title, text_url=text_url, img_url=img_url, posts=list())
         if not vk_status == 'posted':
             add_post_to_event(
                 event,
@@ -95,7 +110,7 @@ def parse_table_rows(table_rows: list[list]) -> Iterator[Event]:
                 publish_time_raw=ok_publish_time
             )
         if event.posts:
-            print(event, event.posts)
+            text = get_post_text(text_url)
             yield event
 
 
