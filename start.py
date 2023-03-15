@@ -1,16 +1,19 @@
+import os
 import time
 from pprint import pprint
 
+from dotenv import load_dotenv
+
 from sheets.methods import get_waiting_posts
-import config
 
 
 def main():
+    load_dotenv()
     while True:
         # Читаем гугл табличку и запускаем постинг, если надо. В табличке отмечаем сделанное
         posts = get_waiting_posts(
-            credentials_file=config.credentials_file,
-            spreadsheet_id=config.spreadsheet_id
+            credentials_file=os.environ['GOOGLE_SHEETS_CREDENTIALS_FILE'],
+            spreadsheet_id=os.environ['GOOGLE_SHEETS_SPREADSHEET_ID']
         )
         for post in posts:
             pprint(post)
