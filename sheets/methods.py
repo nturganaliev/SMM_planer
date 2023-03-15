@@ -40,23 +40,17 @@ def get_active_events() -> Iterator[Event]:
 @retry_on_network_error
 def set_post_status(event: Event, social: str, status: str):
     service = login()
-    range_ = f'Plan!A{event.line + 3}:L{event.line + 3}'
-    status_fields = {'vk': 3, 'tg': 6, 'ok': 9}
 
-    event_line = service.spreadsheets().values().get(
-        spreadsheetId=_spreadsheet_id,
-        range=range_,
-        majorDimension='ROWS'
-    ).execute()['values'][0]
-
-    event_line[status_fields[social]] = status
+    status_columns = {'vk': 'D', 'tg': 'G', 'ok': 'J'}
+    column = status_columns[social]
+    range_ = f'Plan!{column}{event.line + 3}:{column}{event.line + 3}'
 
     service.spreadsheets().values().batchUpdate(spreadsheetId=_spreadsheet_id, body={
         'valueInputOption': 'USER_ENTERED',
         'data': {
             'range': range_,
             'majorDimension': 'ROWS',
-            'values': [event_line]}
+            'values': [[status]]}
     }).execute()
 
 
@@ -121,4 +115,6 @@ def add_post_to_event(
     except ValueError:
         set_post_status(event, social, 'error')
     else:
+        if status_field == 'error':
+            set_post_status(event, social, '')
         event.posts.append(post)
