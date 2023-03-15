@@ -186,3 +186,5 @@ fabric.properties
 
 # tokens and personal data
 *.json
+
+access_tokens.env
