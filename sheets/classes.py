@@ -14,7 +14,10 @@ class Post(NamedTuple):
     ok_status: str
 
     @staticmethod
-    def parse_row(input_list: list | tuple):
+    def parse_row(post_row: list | tuple):
+        if len(post_row) != 12:
+            raise IndexError
+
         def strp_publish_at(datetime_raw: str):
             return datetime.strptime(datetime_raw, '%d.%m.%Y - %H:%M:%S')
 
@@ -26,16 +29,21 @@ class Post(NamedTuple):
             else:
                 return 'error'
 
+        title, text, img_url, *vk_tg_ok_publishing = post_row
+        vk_publish_date, vk_publish_time, vk_status, *tg_ok_publishing = vk_tg_ok_publishing
+        tg_publish_date, tg_publish_time, tg_status, *ok_publishing = tg_ok_publishing
+        ok_publish_date, ok_publish_time, ok_status = ok_publishing
+
         return Post(
-            title=input_list[0],
-            text=input_list[1],
-            img_url=input_list[2],
-            vk_publish_at=strp_publish_at(' - '.join([input_list[4], input_list[5]])),
-            vk_status=define_status(input_list[3]),
-            tg_publish_at=strp_publish_at(' - '.join([input_list[7], input_list[8]])),
-            tg_status=define_status(input_list[6]),
-            ok_publish_at=strp_publish_at(' - '.join([input_list[10], input_list[11]])),
-            ok_status=define_status(input_list[9])
+            title=title,
+            text=text,
+            img_url=img_url,
+            vk_publish_at=strp_publish_at(' - '.join([vk_publish_date, vk_publish_time])),
+            vk_status=define_status(vk_status),
+            tg_publish_at=strp_publish_at(' - '.join([tg_publish_date, tg_publish_time])),
+            tg_status=define_status(tg_status),
+            ok_publish_at=strp_publish_at(' - '.join([ok_publish_date, ok_publish_time])),
+            ok_status=define_status(ok_status)
         )
 
     def is_waiting(self) -> bool:
