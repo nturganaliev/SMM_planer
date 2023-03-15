@@ -26,18 +26,15 @@ class Post(NamedTuple):
             else:
                 return 'error'
 
-        vk_publish_datetime = ' - '.join([input_list[4], input_list[5]])
-        tg_publish_datetime = ' - '.join([input_list[7], input_list[8]])
-        ok_publish_datetime = ' - '.join([input_list[10], input_list[11]])
         return Post(
             title=input_list[0],
             text=input_list[1],
             img_url=input_list[2],
-            vk_publish_at=strp_publish_at(vk_publish_datetime),
+            vk_publish_at=strp_publish_at(' - '.join([input_list[4], input_list[5]])),
             vk_status=define_status(input_list[3]),
-            tg_publish_at=strp_publish_at(tg_publish_datetime),
+            tg_publish_at=strp_publish_at(' - '.join([input_list[7], input_list[8]])),
             tg_status=define_status(input_list[6]),
-            ok_publish_at=strp_publish_at(ok_publish_datetime),
+            ok_publish_at=strp_publish_at(' - '.join([input_list[10], input_list[11]])),
             ok_status=define_status(input_list[9])
         )
 
