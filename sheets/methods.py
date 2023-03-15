@@ -1,3 +1,4 @@
+from pprint import pprint
 from typing import Iterator
 
 import httplib2
@@ -9,14 +10,18 @@ from .classes import Post
 
 
 @retry_on_network_error
-def get_waiting_posts(credentials_file: str, spreadsheet_id: str) -> Iterator[Post]:
+def login(credentials_file: str):
     credentials = ServiceAccountCredentials.from_json_keyfile_name(
         credentials_file,
         ['https://www.googleapis.com/auth/spreadsheets',
          'https://www.googleapis.com/auth/drive'])
     httpAuth = credentials.authorize(httplib2.Http())
-    service = apiclient.discovery.build('sheets', 'v4', http=httpAuth)
+    return apiclient.discovery.build('sheets', 'v4', http=httpAuth)
 
+
+@retry_on_network_error
+def get_waiting_posts(credentials_file: str, spreadsheet_id: str) -> Iterator[Post]:
+    service = login(credentials_file)
     plan_table = service.spreadsheets().values().get(
         spreadsheetId=spreadsheet_id,
         range='Plan!A3:L10000',
