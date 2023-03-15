@@ -37,9 +37,9 @@ class Post(NamedTuple):
                 return 'error'
 
         title, text, img_url, *vk_tg_ok_publishing = post_row
-        vk_publish_date, vk_publish_time, vk_status, *tg_ok_publishing = vk_tg_ok_publishing
-        tg_publish_date, tg_publish_time, tg_status, *ok_publishing = tg_ok_publishing
-        ok_publish_date, ok_publish_time, ok_status = ok_publishing
+        vk_status, vk_publish_date, vk_publish_time, *tg_ok_publishing = vk_tg_ok_publishing
+        tg_status, tg_publish_date, tg_publish_time, *ok_publishing = tg_ok_publishing
+        ok_status, ok_publish_date, ok_publish_time = ok_publishing
 
         return Post(
             title=title,
