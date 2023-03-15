@@ -21,6 +21,8 @@ def post_on_service(post: Post, service: Literal['vk', 'tg', 'ok']):
     elif service == 'ok':
         print('OK')
         pprint(post)
+    else:
+        raise ValueError
 
 
 def post_by_status(posts: Iterator[Post]):
