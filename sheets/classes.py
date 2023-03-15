@@ -22,8 +22,9 @@ class Post(NamedTuple):
         ТГ статус | ТГ дата публикации | ТГ время публикации |
         ОК статус | ОК дата публикации | ОК время публикации |
         """
-        if len(post_row) != 12:
-            raise IndexError
+        columns_num = len(post_row)
+        if columns_num != 12:
+            raise IndexError(f'Неверный формат поста. Ячеек должно быть 12, а не {columns_num}')
 
         def strp_publish_at(datetime_raw: str):
             return datetime.strptime(datetime_raw, '%d.%m.%Y - %H:%M:%S')
