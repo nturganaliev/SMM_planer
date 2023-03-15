@@ -28,13 +28,8 @@ class Post(NamedTuple):
         def strp_publish_at(datetime_raw: str):
             return datetime.strptime(datetime_raw, '%d.%m.%Y - %H:%M:%S')
 
-        def define_status(input_status: str):
-            if not input_status:
-                return 'waiting'
-            elif input_status == 'posted':
-                return 'posted'
-            else:
-                return 'error'
+        def define_status(status_field: str):
+            return 'posted' if status_field == 'posted' else 'waiting'
 
         title, text, img_url, *vk_tg_ok_publishing = post_row
         vk_status, vk_publish_date, vk_publish_time, *tg_ok_publishing = vk_tg_ok_publishing
