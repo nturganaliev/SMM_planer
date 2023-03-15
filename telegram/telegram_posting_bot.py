@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 
 def create_post(post_text, post_image=False, telegram_channel=None):
-    load_dotenv('access_tokens.env')
+    load_dotenv('.env')
     if not telegram_channel:
         telegram_channel = os.environ['TELEGRAM_CHANNEL']
     telegram_bot_token = os.environ['TELEGRAM_TOKEN']
@@ -22,3 +22,4 @@ def create_post(post_text, post_image=False, telegram_channel=None):
             chat_id=telegram_channel,
             text=post_text
         )
+    return True
