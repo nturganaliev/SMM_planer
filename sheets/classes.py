@@ -2,58 +2,23 @@ from datetime import datetime
 from typing import NamedTuple
 
 
-class Post(NamedTuple):
+class Event(NamedTuple):
     title: str
     text: str
     img_url: str
-    vk_publish_at: datetime
-    vk_status: str
-    tg_publish_at: datetime
-    tg_status: str
-    ok_publish_at: datetime
-    ok_status: str
+    posts = []
 
-    @classmethod
-    def parse_row(cls, post_row: list | tuple):
-        """
-        @post_row: Строка поста из таблицы Google Sheets. Состоит из 12 ячеек:
-        Название поста | Текст поста | Ссылка на картинку |
-        ВК статус | ВК дата публикации | ВК время публикации |
-        ТГ статус | ТГ дата публикации | ТГ время публикации |
-        ОК статус | ОК дата публикации | ОК время публикации |
-        """
-        columns_num = len(post_row)
-        if columns_num != 12:
-            raise IndexError(f'Неверный формат поста. Ячеек должно быть 12, а не {columns_num}')
 
-        def strp_publish_at(datetime_raw: str):
-            return datetime.strptime(datetime_raw, '%d.%m.%Y - %H:%M:%S')
+class Post:
 
-        def define_status(status_field: str):
-            return 'posted' if status_field == 'posted' else 'waiting'
+    def __init__(self, service: str, status_field: str, publish_date_raw: str, publish_time_raw: str):
+        publish_raw = ' - '.join([publish_date_raw, publish_time_raw])
+        self.service = service
+        self.status = 'posted' if status_field == 'posted' else 'waiting'
+        self.publish_at = datetime.strptime(publish_raw, '%d.%m.%Y - %H:%M:%S')
 
-        title, text, img_url, *vk_tg_ok_publishing = post_row
-        vk_status, vk_publish_date, vk_publish_time, *tg_ok_publishing = vk_tg_ok_publishing
-        tg_status, tg_publish_date, tg_publish_time, *ok_publishing = tg_ok_publishing
-        ok_status, ok_publish_date, ok_publish_time = ok_publishing
-
-        return cls(
-            title=title,
-            text=text,
-            img_url=img_url,
-            vk_publish_at=strp_publish_at(' - '.join([vk_publish_date, vk_publish_time])),
-            vk_status=define_status(vk_status),
-            tg_publish_at=strp_publish_at(' - '.join([tg_publish_date, tg_publish_time])),
-            tg_status=define_status(tg_status),
-            ok_publish_at=strp_publish_at(' - '.join([ok_publish_date, ok_publish_time])),
-            ok_status=define_status(ok_status)
-        )
+    def __str__(self):
+        return f'{self.service} : {self.publish_at} : {self.status}'
 
     def is_waiting(self) -> bool:
-        return any(
-            [
-                self.vk_status == 'waiting',
-                self.tg_status == 'waiting',
-                self.ok_status == 'waiting'
-            ]
-        )
+        return self.status == 'waiting'
