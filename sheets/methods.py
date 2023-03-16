@@ -34,7 +34,7 @@ def get_active_events() -> Iterator[Event]:
     service = login('sheets', version='v4')
     plan_table = service.spreadsheets().values().get(
         spreadsheetId=_spreadsheet_id,
-        range='Plan!A3:L10000',
+        range='Plan!A1:L10000',
         majorDimension='ROWS'
     ).execute()
     return parse_table_rows(plan_table['values'])
@@ -58,7 +58,7 @@ def set_post_status(event: Event, social: str, status: str):
 
     status_columns = {'vk': 'D', 'tg': 'G', 'ok': 'J'}
     column = status_columns[social]
-    range_ = f'Plan!{column}{event.line + 3}:{column}{event.line + 3}'
+    range_ = f'Plan!{column}{event.line}:{column}{event.line}'
 
     service.spreadsheets().values().batchUpdate(spreadsheetId=_spreadsheet_id, body={
         'valueInputOption': 'USER_ENTERED',
@@ -76,7 +76,7 @@ def renew_dashboard():
 
 
 def parse_table_rows(table_rows: list[list]) -> Iterator[Event]:
-    for row_num, row in enumerate(table_rows):
+    for row_num, row in enumerate(table_rows[2:], start=3):
         if empty_cell_num := 12 - len(row):  # добавляем пустые ячейки в конце строки, если нужно
             row.extend([''] * empty_cell_num)
         title, text_url, img_url, *vk_tg_ok_publishing = row
@@ -84,7 +84,7 @@ def parse_table_rows(table_rows: list[list]) -> Iterator[Event]:
         tg_status, tg_publish_date, tg_publish_time, *ok_publishing = tg_ok_publishing
         ok_status, ok_publish_date, ok_publish_time = ok_publishing
 
-        event = Event(line=row_num, title=title, text_url=text_url, img_url=img_url, posts=list())
+        event = Event(line=row_num, title=title, img_url=img_url, posts=list())
         if not vk_status == 'posted':
             add_post_to_event(
                 event,
@@ -110,7 +110,7 @@ def parse_table_rows(table_rows: list[list]) -> Iterator[Event]:
                 publish_time_raw=ok_publish_time
             )
         if event.posts:
-            text = get_post_text(text_url)
+            # event.text = get_post_text(text_url)
             yield event
 
 
