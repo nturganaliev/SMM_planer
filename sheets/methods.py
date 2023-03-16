@@ -31,14 +31,14 @@ def login(service_name: str, version: str) -> Service:
 
 
 @retry_on_network_error
-def get_active_events() -> Iterator[Event]:
+def get_events() -> Iterator[Event]:
     service = login('sheets', version='v4')
     plan_table = service.spreadsheets().values().get(
         spreadsheetId=_spreadsheet_id,
         range='Plan!A1:L10000',
         majorDimension='ROWS'
     ).execute()
-    return parse_active_events(plan_table['values'])
+    return parse_events_from_plan(plan_table['values'])
 
 
 @retry_on_network_error
@@ -79,10 +79,66 @@ def set_post_status(event: Event, socials: str | list | tuple, status: str):
 @retry_on_network_error
 def renew_dashboard():
     service = login('sheets', version='v4')
-    pass
+    plan_table = service.spreadsheets().values().get(
+        spreadsheetId=_spreadsheet_id,
+        range='Plan!A1:L10000',
+        majorDimension='ROWS'
+    ).execute()
+    events = parse_events_from_plan(plan_table['values'])
+    data = []
+    sheet_requests = []
+    for event in events:
+        statuses = {
+            post.social: post.status
+            for post in event.posts
+        }
+        first_row = (event.line - 2) * 3 - 1
+
+        data.append(
+            {
+                'range': f'Dashboard!A{first_row}:B{first_row + 2}',
+                'majorDimension': 'ROWS',
+                'values': [
+                    [event.title, 'VK'],
+                    ['', 'TG'],
+                    ['', 'OK']
+                ]
+            }
+        )
+        sheet_requests.append(
+            {"mergeCells": {"range": {'sheetId': 737766278,
+                                      'startRowIndex': first_row - 1,
+                                      'endRowIndex': first_row + 2,
+                                      'startColumnIndex': 0,
+                                      'endColumnIndex': 1},
+                            "mergeType": 'MERGE_COLUMNS'}})
+        # sheet_requests.append(
+        #     {'updateCells':
+        #          {"range": {'sheetId': 737766278,
+        #                     'startRowIndex': first_row - 1,
+        #                     'endRowIndex': first_row + 2,
+        #                     'startColumnIndex': 0,
+        #                     'endColumnIndex': 1},
+        #           'rows': [{'values': [{'userEnteredFormat': {'backgroundColor': {'red': 1, 'green': 0, 'blue': 0}}},
+        #                                {'userEnteredFormat': {'backgroundColor': {'red': 0, 'green': 1, 'blue': 0}}}]},
+        #                    {'values': [{'userEnteredFormat': {'backgroundColor': {'red': 0, 'green': 0, 'blue': 1}}},
+        #                                {'userEnteredFormat': {'backgroundColor': {'red': 1, 'green': 1, 'blue': 0}}}]}],
+        #           'fields': 'userEnteredFormat'}})
+
+        # pprint(sheet_requests)
+        service.spreadsheets().values().batchUpdate(spreadsheetId=_spreadsheet_id, body={
+            'valueInputOption': 'USER_ENTERED',
+            'data': data
+        }).execute()
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=_spreadsheet_id,
+            body={
+                "requests": sheet_requests
+            }
+        ).execute()
 
 
-def parse_active_events(table_rows: list[list]) -> Iterator[Event]:
+def parse_events_from_plan(table_rows: list[list]) -> Iterator[Event]:
     for row_num, row in enumerate(table_rows[2:], start=3):
         if empty_cell_num := 12 - len(row):  # добавляем пустые ячейки в конце строки, если нужно
             row.extend([''] * empty_cell_num)
@@ -116,8 +172,8 @@ def parse_active_events(table_rows: list[list]) -> Iterator[Event]:
                 publish_date_raw=ok_publish_date,
                 publish_time_raw=ok_publish_time
             )
-        if event.posts:
-            yield event
+
+        yield event
 
 
 def add_post_to_event(

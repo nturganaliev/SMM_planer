@@ -13,7 +13,7 @@ from telegram.error import BadRequest
 
 from errors import retry_on_network_error
 from sheets.classes import Event
-from sheets.methods import get_active_events, renew_dashboard, set_post_status, get_post_text
+from sheets.methods import get_events, renew_dashboard, set_post_status, get_post_text
 from ok.post_to_ok import post_to_ok_group as post_to_ok
 from tg.telegram_posting_bot import create_post as post_to_tg
 from vk.vk_posting_bot import create_post as post_to_vk
@@ -36,12 +36,12 @@ def post_by_social(event: Event):
     post_text = f'{event.title}\n\n{event.text}' if event.text else event.title
     for post in event.posts:
         now = datetime.now()
-        # if post.social == 'vk' and post.publish_at <= now:
-        #     post_to_social(post_to_vk, post_text, post.social, event)
+        if post.social == 'vk' and post.publish_at <= now:
+            post_to_social(post_to_vk, post_text, post.social, event)
         if post.social == 'tg' and post.publish_at <= now:
             post_to_social(post_to_tg, post_text, post.social, event)
-        if post.social == 'ok' and post.publish_at <= now:
-            post_to_social(post_to_ok, post_text, post.social, event)
+        # if post.social == 'ok' and post.publish_at <= now:
+        #     post_to_social(post_to_ok, post_text, post.social, event)
 
 
 @retry_on_network_error
@@ -65,22 +65,23 @@ def get_img_file_name(img_url: str) -> str:
 
 def main():
     while True:
-        events = get_active_events()
+        events = get_events()
         for event in events:
-            if event.text_url:
-                try:
-                    event.text = get_post_text(event.text_url)
-                except (MissingSchema, HTTPError, HttpError):
-                    set_post_status(event, ['vk', 'tg', 'ok'], 'error')
-                    continue
-            if event.img_url:
-                try:
-                    event.img_file_name = get_img_file_name(event.img_url)
-                    get_image(event.img_url, event.img_file_name)
-                except (MissingSchema, HTTPError):
-                    set_post_status(event, ['vk', 'tg', 'ok'], 'error')
-                    continue
-            post_by_social(event)
+            if event.posts:
+                if event.text_url:
+                    try:
+                        event.text = get_post_text(event.text_url)
+                    except (MissingSchema, HTTPError, HttpError):
+                        set_post_status(event, ['vk', 'tg', 'ok'], 'error')
+                        continue
+                if event.img_url:
+                    try:
+                        event.img_file_name = get_img_file_name(event.img_url)
+                        get_image(event.img_url, event.img_file_name)
+                    except (MissingSchema, HTTPError):
+                        set_post_status(event, ['vk', 'tg', 'ok'], 'error')
+                        continue
+                post_by_social(event)
         renew_dashboard()
         shutil.rmtree('images', ignore_errors=True)
         time.sleep(3)
