@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 
 import requests
 from requests import HTTPError
-from telegram.error import BadRequest
 
 from errors import retry_on_network_error
 from sheets.classes import Event
@@ -24,7 +23,7 @@ def post_by_social(event: Event):
                 is_posted = False
                 if not is_posted:
                     raise ValueError
-            except [HTTPError, ValueError]:
+            except (HTTPError, ValueError):
                 set_post_status(event, post.social, 'error')
                 return
             else:
@@ -34,7 +33,7 @@ def post_by_social(event: Event):
                 is_posted = post_to_tg(post_text=post_text, post_image=event.img_file_name)
                 if not is_posted:
                     raise ValueError
-            except [HTTPError, ValueError]:
+            except (HTTPError, ValueError):
                 set_post_status(event, post.social, 'error')
                 return
             else:
@@ -45,7 +44,7 @@ def post_by_social(event: Event):
                 is_posted = False
                 if not is_posted:
                     raise ValueError
-            except [HTTPError, ValueError]:
+            except (HTTPError, ValueError):
                 set_post_status(event, post.social, 'error')
                 return
             else:
