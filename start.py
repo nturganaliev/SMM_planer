@@ -5,6 +5,7 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 import requests
+from googleapiclient.errors import HttpError
 from requests import HTTPError
 from requests.exceptions import MissingSchema
 from telegram.error import BadRequest
@@ -79,7 +80,7 @@ def main():
             if event.text_url:
                 try:
                     event.text = get_post_text(event.text_url)
-                except (MissingSchema, HTTPError):
+                except (MissingSchema, HTTPError, HttpError):
                     set_post_status(event, ['vk', 'tg', 'ok'], 'error')
                     continue
             if event.img_url:
