@@ -2,6 +2,7 @@ import os
 import shutil
 import time
 from datetime import datetime
+from typing import Callable
 from urllib.parse import urlparse
 
 import requests
@@ -13,45 +14,34 @@ from telegram.error import BadRequest
 from errors import retry_on_network_error
 from sheets.classes import Event
 from sheets.methods import get_active_events, renew_dashboard, set_post_status, get_post_text
+from ok.post_to_ok import post_to_ok_group as post_to_ok
 from tg.telegram_posting_bot import create_post as post_to_tg
+from vk.vk_posting_bot import create_post as post_to_vk
 
 
 @retry_on_network_error
+def post_to_social(post_func: Callable, post_text: str, social: str, event: Event):
+    img_file_path = os.path.join('images', event.img_file_name) if event.img_file_name else None
+    try:
+        is_posted = post_func(post_text, img_file_path)
+        if not is_posted:
+            raise ValueError
+    except (BadRequest, ValueError, TypeError):
+        set_post_status(event, social, 'error')
+    else:
+        set_post_status(event, social, 'posted')
+
+
 def post_by_social(event: Event):
     post_text = f'{event.title}\n\n{event.text}' if event.text else event.title
     for post in event.posts:
         now = datetime.now()
-        if post.social == 'vk' and post.publish_at <= now:
-            try:
-                is_posted = False
-                if not is_posted:
-                    raise ValueError
-            except (BadRequest, ValueError):
-                set_post_status(event, post.social, 'error')
-                return
-            else:
-                set_post_status(event, post.social, 'posted')
-        elif post.social == 'tg' and post.publish_at <= now:
-            try:
-                is_posted = post_to_tg(post_text=post_text, post_image=event.img_file_name)
-                if not is_posted:
-                    raise ValueError
-            except (BadRequest, ValueError):
-                set_post_status(event, post.social, 'error')
-                return
-            else:
-                set_post_status(event, post.social, 'posted')
-
-        elif post.social == 'ok' and post.publish_at <= now:
-            try:
-                is_posted = False
-                if not is_posted:
-                    raise ValueError
-            except (BadRequest, ValueError):
-                set_post_status(event, post.social, 'error')
-                return
-            else:
-                set_post_status(event, post.social, 'posted')
+        # if post.social == 'vk' and post.publish_at <= now:
+        #     post_to_social(post_to_vk, post_text, post.social, event)
+        if post.social == 'tg' and post.publish_at <= now:
+            post_to_social(post_to_tg, post_text, post.social, event)
+        if post.social == 'ok' and post.publish_at <= now:
+            post_to_social(post_to_ok, post_text, post.social, event)
 
 
 @retry_on_network_error
