@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 import requests
 from requests import HTTPError
+from requests.exceptions import MissingSchema
 from telegram.error import BadRequest
 
 from errors import retry_on_network_error
@@ -78,14 +79,14 @@ def main():
             if event.text_url:
                 try:
                     event.text = get_post_text(event.text_url)
-                except HTTPError:
+                except (MissingSchema, HTTPError):
                     set_post_status(event, ['vk', 'tg', 'ok'], 'error')
                     continue
             if event.img_url:
                 try:
                     event.img_file_name = get_img_file_name(event.img_url)
                     get_image(event.img_url, event.img_file_name)
-                except HTTPError:
+                except (MissingSchema, HTTPError):
                     set_post_status(event, ['vk', 'tg', 'ok'], 'error')
                     continue
             post_by_social(event)
