@@ -11,7 +11,7 @@ def create_post(post_text, post_image=False, telegram_channel=None):
     telegram_bot_token = os.environ['TELEGRAM_TOKEN']
     telegram_bot = telegram.Bot(token=telegram_bot_token)
     if post_image:
-        with open(os.path.join('images', post_image), 'rb') as image:
+        with open(post_image, 'rb') as image:
             telegram_bot.send_photo(
                 chat_id=telegram_channel,
                 photo=image,
