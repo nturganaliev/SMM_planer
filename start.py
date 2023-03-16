@@ -24,7 +24,7 @@ def post_by_social(event: Event):
                 is_posted = False
                 if not is_posted:
                     raise ValueError
-            except [BadRequest, ValueError]:
+            except [HTTPError, ValueError]:
                 set_post_status(event, post.social, 'error')
                 return
             else:
@@ -34,7 +34,7 @@ def post_by_social(event: Event):
                 is_posted = post_to_tg(post_text=post_text, post_image=event.img_file_name)
                 if not is_posted:
                     raise ValueError
-            except [BadRequest, ValueError]:
+            except [HTTPError, ValueError]:
                 set_post_status(event, post.social, 'error')
                 return
             else:
@@ -45,7 +45,7 @@ def post_by_social(event: Event):
                 is_posted = False
                 if not is_posted:
                     raise ValueError
-            except [BadRequest, ValueError]:
+            except [HTTPError, ValueError]:
                 set_post_status(event, post.social, 'error')
                 return
             else:
