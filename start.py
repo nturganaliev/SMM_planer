@@ -52,8 +52,10 @@ def main():
     while True:
         events = get_active_events()
         for event in events:
-            img_file_name = get_img_file_name(event.img_url)
-            get_image(event.img_url, img_file_name)
+            img_file_name = None
+            if event.img_url:
+                img_file_name = get_img_file_name(event.img_url)
+                get_image(event.img_url, img_file_name)
             post_by_social(event, img_file_name)
         renew_dashboard()
         shutil.rmtree('images', ignore_errors=True)
