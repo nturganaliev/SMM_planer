@@ -143,6 +143,8 @@ def parse_events_from_plan(table_rows: list[list]) -> Iterator[Event]:
         if empty_cell_num := 12 - len(row):  # добавляем пустые ячейки в конце строки, если нужно
             row.extend([''] * empty_cell_num)
         title, text_url, img_url, *vk_tg_ok_publishing = row
+        if not title:
+            continue
         vk_status, vk_publish_date, vk_publish_time, *tg_ok_publishing = vk_tg_ok_publishing
         tg_status, tg_publish_date, tg_publish_time, *ok_publishing = tg_ok_publishing
         ok_status, ok_publish_date, ok_publish_time = ok_publishing
