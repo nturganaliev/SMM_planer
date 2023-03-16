@@ -15,7 +15,7 @@ from tg.telegram_posting_bot import create_post as post_to_tg
 
 @retry_on_network_error
 def post_by_social(event: Event, img_file_name: str):
-    post_text = f'{event.title}\n\n{event.text}'
+    post_text = f'{event.title}\n\n{event.text}' if event.text else event.title
     for post in event.posts:
         now = datetime.now()
         if post.social == 'vk' and post.publish_at <= now:
@@ -60,8 +60,14 @@ def main():
         for event in events:
             img_file_name = None
             if event.img_url:
-                img_file_name = get_img_file_name(event.img_url)
-                get_image(event.img_url, img_file_name)
+                try:
+                    img_file_name = get_img_file_name(event.img_url)
+                    get_image(event.img_url, img_file_name)
+                except HTTPError:
+                    set_post_status(event, 'vk', 'error')
+                    set_post_status(event, 'tg', 'error')
+                    set_post_status(event, 'ok', 'error')
+                    continue
             post_by_social(event, img_file_name)
         renew_dashboard()
         shutil.rmtree('images', ignore_errors=True)
