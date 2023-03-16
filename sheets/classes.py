@@ -5,9 +5,9 @@ from typing import NamedTuple
 class Event(NamedTuple):
     line: int
     title: str
-    text_url: str
     img_url: str
     posts: list
+    text: str = None
 
 
 class Post:
@@ -20,4 +20,3 @@ class Post:
 
     def __str__(self):
         return f'{self.social} : {self.publish_at} : {self.status}'
-
