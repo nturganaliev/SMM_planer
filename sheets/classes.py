@@ -1,13 +1,16 @@
+from dataclasses import dataclass
 from datetime import datetime
-from typing import NamedTuple
 
 
-class Event(NamedTuple):
+@dataclass
+class Event:
     line: int
     title: str
-    img_url: str
     posts: list
+    img_url: str
+    text_url: str
     text: str = None
+    img_file_name: str = None
 
 
 class Post:

@@ -6,33 +6,50 @@ from urllib.parse import urlparse
 
 import requests
 from requests import HTTPError
+from telegram.error import BadRequest
 
 from errors import retry_on_network_error
 from sheets.classes import Event
-from sheets.methods import get_active_events, renew_dashboard, set_post_status
+from sheets.methods import get_active_events, renew_dashboard, set_post_status, get_post_text
 from tg.telegram_posting_bot import create_post as post_to_tg
 
 
 @retry_on_network_error
-def post_by_social(event: Event, img_file_name: str):
+def post_by_social(event: Event):
     post_text = f'{event.title}\n\n{event.text}' if event.text else event.title
     for post in event.posts:
         now = datetime.now()
         if post.social == 'vk' and post.publish_at <= now:
-            if False:
-                set_post_status(event, post.social, 'posted')
-            else:
+            try:
+                is_posted = False
+                if not is_posted:
+                    raise ValueError
+            except [BadRequest, ValueError]:
                 set_post_status(event, post.social, 'error')
+                return
+            else:
+                set_post_status(event, post.social, 'posted')
         elif post.social == 'tg' and post.publish_at <= now:
-            if post_to_tg(post_text=post_text, post_image=img_file_name):
-                set_post_status(event, post.social, 'posted')
-            else:
+            try:
+                is_posted = post_to_tg(post_text=post_text, post_image=event.img_file_name)
+                if not is_posted:
+                    raise ValueError
+            except [BadRequest, ValueError]:
                 set_post_status(event, post.social, 'error')
+                return
+            else:
+                set_post_status(event, post.social, 'posted')
+
         elif post.social == 'ok' and post.publish_at <= now:
-            if False:
-                set_post_status(event, post.social, 'posted')
-            else:
+            try:
+                is_posted = False
+                if not is_posted:
+                    raise ValueError
+            except [BadRequest, ValueError]:
                 set_post_status(event, post.social, 'error')
+                return
+            else:
+                set_post_status(event, post.social, 'posted')
 
 
 @retry_on_network_error
@@ -58,17 +75,20 @@ def main():
     while True:
         events = get_active_events()
         for event in events:
-            img_file_name = None
+            if event.text_url:
+                try:
+                    event.text = get_post_text(event.text_url)
+                except HTTPError:
+                    set_post_status(event, ['vk', 'tg', 'ok'], 'error')
+                    continue
             if event.img_url:
                 try:
-                    img_file_name = get_img_file_name(event.img_url)
-                    get_image(event.img_url, img_file_name)
+                    event.img_file_name = get_img_file_name(event.img_url)
+                    get_image(event.img_url, event.img_file_name)
                 except HTTPError:
-                    set_post_status(event, 'vk', 'error')
-                    set_post_status(event, 'tg', 'error')
-                    set_post_status(event, 'ok', 'error')
+                    set_post_status(event, ['vk', 'tg', 'ok'], 'error')
                     continue
-            post_by_social(event, img_file_name)
+            post_by_social(event)
         renew_dashboard()
         shutil.rmtree('images', ignore_errors=True)
         time.sleep(3)

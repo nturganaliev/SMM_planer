@@ -12,6 +12,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 
 from errors import retry_on_network_error
 from .classes import Event, Post
+from .parse_google_doc import read_structural_elements
 
 load_dotenv()
 _credentials_file = os.environ['GOOGLE_SHEETS_CREDENTIALS_FILE']
@@ -37,7 +38,7 @@ def get_active_events() -> Iterator[Event]:
         range='Plan!A1:L10000',
         majorDimension='ROWS'
     ).execute()
-    return parse_table_rows(plan_table['values'])
+    return parse_active_events(plan_table['values'])
 
 
 @retry_on_network_error
@@ -46,26 +47,32 @@ def get_post_text(text_url: str) -> str:
     parsed_url = urlparse(text_url)
     document_id = parsed_url.path.lstrip('/document/d/').split('/')[0]
     document = service.documents().get(documentId=document_id).execute()
-    with open('doc.json', 'w')as file:
+    with open('doc.json', 'w') as file:
         json.dump(document, file)
-    # pprint(document.get('title'))
-    # pprint(document.get('content'))
+    return read_structural_elements(document.get('body').get('content'))
 
 
 @retry_on_network_error
-def set_post_status(event: Event, social: str, status: str):
+def set_post_status(event: Event, socials: str | list | tuple, status: str):
     service = login('sheets', version='v4')
-
     status_columns = {'vk': 'D', 'tg': 'G', 'ok': 'J'}
-    column = status_columns[social]
-    range_ = f'Plan!{column}{event.line}:{column}{event.line}'
+    if isinstance(socials, str):
+        socials = [socials]
+
+    data = []
+    for socials in socials:
+        column = status_columns[socials]
+        data.append(
+            {
+                'range': f'Plan!{column}{event.line}:{column}{event.line}',
+                'majorDimension': 'ROWS',
+                'values': [[status]]
+            }
+        )
 
     service.spreadsheets().values().batchUpdate(spreadsheetId=_spreadsheet_id, body={
         'valueInputOption': 'USER_ENTERED',
-        'data': {
-            'range': range_,
-            'majorDimension': 'ROWS',
-            'values': [[status]]}
+        'data': data
     }).execute()
 
 
@@ -75,7 +82,7 @@ def renew_dashboard():
     pass
 
 
-def parse_table_rows(table_rows: list[list]) -> Iterator[Event]:
+def parse_active_events(table_rows: list[list]) -> Iterator[Event]:
     for row_num, row in enumerate(table_rows[2:], start=3):
         if empty_cell_num := 12 - len(row):  # добавляем пустые ячейки в конце строки, если нужно
             row.extend([''] * empty_cell_num)
@@ -84,7 +91,7 @@ def parse_table_rows(table_rows: list[list]) -> Iterator[Event]:
         tg_status, tg_publish_date, tg_publish_time, *ok_publishing = tg_ok_publishing
         ok_status, ok_publish_date, ok_publish_time = ok_publishing
 
-        event = Event(line=row_num, title=title, img_url=img_url, posts=list())
+        event = Event(line=row_num, title=title, img_url=img_url, posts=list(), text_url=text_url)
         if not vk_status == 'posted':
             add_post_to_event(
                 event,
@@ -110,7 +117,6 @@ def parse_table_rows(table_rows: list[list]) -> Iterator[Event]:
                 publish_time_raw=ok_publish_time
             )
         if event.posts:
-            # event.text = get_post_text(text_url)
             yield event
 
 
