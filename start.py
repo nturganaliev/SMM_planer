@@ -19,14 +19,20 @@ def post_by_social(event: Event, img_file_name: str):
     for post in event.posts:
         now = datetime.now()
         if post.social == 'vk' and post.publish_at <= now:
-            set_post_status(event, post.social, 'posted')
+            if False:
+                set_post_status(event, post.social, 'posted')
+            else:
+                set_post_status(event, post.social, 'error')
         elif post.social == 'tg' and post.publish_at <= now:
             if post_to_tg(post_text=post_text, post_image=img_file_name):
                 set_post_status(event, post.social, 'posted')
             else:
                 set_post_status(event, post.social, 'error')
         elif post.social == 'ok' and post.publish_at <= now:
-            set_post_status(event, post.social, 'posted')
+            if False:
+                set_post_status(event, post.social, 'posted')
+            else:
+                set_post_status(event, post.social, 'error')
 
 
 @retry_on_network_error
