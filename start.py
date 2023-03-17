@@ -20,8 +20,12 @@ from vk.vk_posting_bot import create_post as post_to_vk
 
 
 @retry_on_network_error
-def post_to_social(post_func: Callable, post_text: str, social: str, event: Event):
-    img_file_path = os.path.join('images', event.img_file_name) if event.img_file_name else None
+def post_to_social(post_func: Callable, social: str, event: Event):
+    post_text = f'{event.title}\n\n{event.text}' if event.text else event.title
+    if social == 'ok':
+        img_file_path = event.img_url
+    else:
+        img_file_path = os.path.join('images', event.img_file_name) if event.img_file_name else None
     try:
         is_posted = post_func(post_text, img_file_path)
         if not is_posted:
@@ -33,16 +37,15 @@ def post_to_social(post_func: Callable, post_text: str, social: str, event: Even
 
 
 def post_by_social(event: Event):
-    post_text = f'{event.title}\n\n{event.text}' if event.text else event.title
     for post in event.posts:
         now = datetime.now()
         if post.social == 'vk' and post.publish_at <= now:
-            post_to_social(post_to_vk, post_text, post.social, event)
+            post_to_social(post_to_vk, post.social, event)
             time.sleep(2)
         if post.social == 'tg' and post.publish_at <= now:
-            post_to_social(post_to_tg, post_text, post.social, event)
-        # if post.social == 'ok' and post.publish_at <= now:
-        #     post_to_social(post_to_ok, post_text, post.social, event)
+            post_to_social(post_to_tg, post.social, event)
+        if post.social == 'ok' and post.publish_at <= now:
+            post_to_social(post_to_ok, post.social, event)
 
 
 @retry_on_network_error
