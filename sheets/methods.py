@@ -82,7 +82,7 @@ def renew_dashboard():
     service = login('sheets', version='v4')
     dashboard_table = service.spreadsheets().values().get(
         spreadsheetId=_spreadsheet_id,
-        range='Dashboard!A1:L10000',
+        range='Dashboard!A1:B10000',
         majorDimension='ROWS'
     ).execute()
     plan_table = service.spreadsheets().values().get(
@@ -90,55 +90,53 @@ def renew_dashboard():
         range='Plan!A1:L10000',
         majorDimension='ROWS'
     ).execute()
+    if len(plan_table) < 2:
+        return
+
+    plan_headers_number = 2
+    dashboard_headers_number = 1
+    socials_number = 3
+
     batch_update = []
     sheet_requests = []
-    for row in plan_table['values']:
+    for row_number, row in enumerate(plan_table['values'][2:], start=3):
         parsed_row = PlanTableRow(row)
         if not parsed_row.title:
             continue
         statuses = {'VK': parsed_row.vk_status,
                     'TG': parsed_row.tg_status,
-                    'OK': parsed_row.ok_status, }
-        first_row_on_dashboard = (row.line - 2) * 3 - 1
+                    'OK': parsed_row.ok_status}
+        title_row_on_dashboard = (row_number - plan_headers_number) * socials_number - dashboard_headers_number
 
-        batch_update.append({'range': f'Dashboard!A{first_row_on_dashboard}:B{first_row_on_dashboard + 2}',
-                             'majorDimension': 'ROWS',
-                             'values': [[parsed_row.title, 'VK'],
-                                        ['', 'TG'],
-                                        ['', 'OK']]})
-        sheet_requests.append({"mergeCells": {"range": {'sheetId': 737766278,
-                                                        'startRowIndex': first_row_on_dashboard - 1,
-                                                        'endRowIndex': first_row_on_dashboard + 2,
-                                                        'startColumnIndex': 0,
-                                                        'endColumnIndex': 1},
-                                              "mergeType": 'MERGE_COLUMNS'}})
-        # sheet_requests.append(
-        #     {'updateCells':
-        #          {"range": {'sheetId': 737766278,
-        #                     'startRowIndex': first_row_on_dashboard - 1,
-        #                     'endRowIndex': first_row_on_dashboard + 2,
-        #                     'startColumnIndex': 0,
-        #                     'endColumnIndex': 1},
-        #           'rows': [{'values': [{'userEnteredFormat': {'backgroundColor': {'red': 1, 'green': 0, 'blue': 0}}},
-        #                                {'userEnteredFormat': {'backgroundColor': {'red': 0, 'green': 1, 'blue': 0}}}]},
-        #                    {'values': [{'userEnteredFormat': {'backgroundColor': {'red': 0, 'green': 0, 'blue': 1}}},
-        #                                {'userEnteredFormat': {'backgroundColor': {'red': 1, 'green': 1, 'blue': 0}}}]}],
-        #           'fields': 'userEnteredFormat'}})
+        batch_update.append(
+            {'range': f'Dashboard!A{title_row_on_dashboard}:B{title_row_on_dashboard + socials_number - 1}',
+             'majorDimension': 'ROWS',
+             'values': [[parsed_row.title, 'VK'],
+                        ['', 'TG'],
+                        ['', 'OK']]})
+        sheet_requests.append(
+            {"mergeCells": {"range": {'sheetId': 737766278,
+                                      'startRowIndex': title_row_on_dashboard - dashboard_headers_number,
+                                      'endRowIndex': title_row_on_dashboard + socials_number - 1,
+                                      'startColumnIndex': 0,
+                                      'endColumnIndex': 1},
+                            "mergeType": 'MERGE_COLUMNS'}})
 
-        # pprint(sheet_requests)
-        service.spreadsheets().values().batchUpdate(spreadsheetId=_spreadsheet_id, body={
-            'valueInputOption': 'USER_ENTERED',
-            'batch_update': batch_update
-        }).execute()
-        service.spreadsheets().batchUpdate(
-            spreadsheetId=_spreadsheet_id,
-            body={
-                "requests": sheet_requests
-            }
-        ).execute()
+    service.spreadsheets().values().batchUpdate(spreadsheetId=_spreadsheet_id, body={
+        'valueInputOption': 'USER_ENTERED',
+        'data': batch_update
+    }).execute()
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=_spreadsheet_id,
+        body={
+            "requests": sheet_requests
+        }
+    ).execute()
 
-        if len(dashboard_table - 1) > len((plan_table - 2) * 3):
-            pass  # чистить не нужные строки в dashboard
+    len_dashboard = len(dashboard_table) - dashboard_headers_number
+    len_plan = (len(plan_table) - plan_headers_number)
+    if len_dashboard > len_plan * socials_number:
+        pass  # чистить не нужные строки в dashboard
 
 
 def parse_events_from_plan(table_rows: list[list]) -> Iterator[Event]:
