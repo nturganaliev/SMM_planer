@@ -93,43 +93,79 @@ def renew_dashboard():
     if len(plan_table) < 2:
         return
 
+    sheet_id = 737766278
     plan_headers_number = 2
     dashboard_headers_number = 1
     socials_number = 3
+    index_correction = 1
+    title_column = 0
+    socials_column = 1
+    background_colors = {
+        'normal': {'red': 1, 'green': 0.95, 'blue': 0.8},
+        'error': {'red': 1, 'green': 0.5, 'blue': 0.5},
+        'posted': {'red': 0.5, 'green': 1, 'blue': 0.5},
+        '': {'red': 0.3, 'green': 0.6, 'blue': 1}  # waiting
+    }
 
     batch_update = []
-    sheet_requests = []
+    formatting_requests = []
     for row_number, row in enumerate(plan_table['values'][2:], start=3):
         parsed_row = PlanTableRow(row)
         if not parsed_row.title:
             continue
-        statuses = {'VK': parsed_row.vk_status,
-                    'TG': parsed_row.tg_status,
-                    'OK': parsed_row.ok_status}
-        title_row_on_dashboard = (row_number - plan_headers_number) * socials_number - dashboard_headers_number
+
+        post_row_on_dashboard = (row_number - plan_headers_number) * socials_number - dashboard_headers_number
 
         batch_update.append(
-            {'range': f'Dashboard!A{title_row_on_dashboard}:B{title_row_on_dashboard + socials_number - 1}',
+            {'range': f'Dashboard!A{post_row_on_dashboard}:'
+                      f'B{post_row_on_dashboard + socials_number - index_correction}',
              'majorDimension': 'ROWS',
              'values': [[parsed_row.title, 'VK'],
                         ['', 'TG'],
                         ['', 'OK']]})
-        sheet_requests.append(
-            {"mergeCells": {"range": {'sheetId': 737766278,
-                                      'startRowIndex': title_row_on_dashboard - dashboard_headers_number,
-                                      'endRowIndex': title_row_on_dashboard + socials_number - 1,
-                                      'startColumnIndex': 0,
-                                      'endColumnIndex': 1},
-                            "mergeType": 'MERGE_COLUMNS'}})
+
+        title_range = {'sheetId': sheet_id,
+                       'startRowIndex': post_row_on_dashboard - dashboard_headers_number,
+                       'endRowIndex': post_row_on_dashboard + socials_number - index_correction,
+                       'startColumnIndex': title_column,
+                       'endColumnIndex': title_column + index_correction}
+
+        formatting_requests.extend([
+            {"mergeCells": {"range": title_range,
+                            "mergeType": 'MERGE_COLUMNS'}},
+            {'repeatCell': {'range': title_range,
+                            'cell': {'userEnteredFormat': {'verticalAlignment': 'TOP',
+                                                           'textFormat': {'bold': True},
+                                                           'backgroundColor': background_colors['normal']}},
+                            'fields': 'userEnteredFormat'}}
+        ])
+        formatting_requests.append(
+            {'updateCells': {
+                'range': {
+                    'sheetId': sheet_id,
+                    'startRowIndex': post_row_on_dashboard - dashboard_headers_number,
+                    'endRowIndex': post_row_on_dashboard - dashboard_headers_number + socials_number + index_correction,
+                    'startColumnIndex': socials_column,
+                    'endColumnIndex': socials_column + index_correction
+                },
+                'rows': [
+                    {'values': [{'userEnteredFormat': {'backgroundColor': background_colors[parsed_row.vk_status]}}]},
+                    {'values': [{'userEnteredFormat': {'backgroundColor': background_colors[parsed_row.tg_status]}}]},
+                    {'values': [{'userEnteredFormat': {'backgroundColor': background_colors[parsed_row.ok_status]}}]}
+                ],
+                'fields': 'userEnteredFormat'
+            }}
+        )
 
     service.spreadsheets().values().batchUpdate(spreadsheetId=_spreadsheet_id, body={
         'valueInputOption': 'USER_ENTERED',
         'data': batch_update
     }).execute()
+
     service.spreadsheets().batchUpdate(
         spreadsheetId=_spreadsheet_id,
         body={
-            "requests": sheet_requests
+            "requests": formatting_requests
         }
     ).execute()
 
