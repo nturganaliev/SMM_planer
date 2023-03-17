@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from typing import NamedTuple
 
 
 @dataclass
@@ -23,3 +24,14 @@ class Post:
 
     def __str__(self):
         return f'{self.social} : {self.publish_at} : {self.status}'
+
+
+class PlanTableRow:
+
+    def __init__(self, table_row: list):
+        if empty_cell_num := 12 - len(table_row):  # добавляем пустые ячейки в конце строки, если нужно
+            table_row.extend([''] * empty_cell_num)
+        self.title, self.text_url, self.img_url, *vk_tg_ok_publishing = table_row
+        self.vk_status, self.vk_publish_date, self.vk_publish_time, *tg_ok_publishing = vk_tg_ok_publishing
+        self.tg_status, self.tg_publish_date, self.tg_publish_time, *ok_publishing = tg_ok_publishing
+        self.ok_status, self.ok_publish_date, self.ok_publish_time = ok_publishing

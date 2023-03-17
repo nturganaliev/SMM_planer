@@ -11,7 +11,7 @@ from google.api.service_pb2 import Service
 from oauth2client.service_account import ServiceAccountCredentials
 
 from errors import retry_on_network_error
-from .classes import Event, Post
+from .classes import Event, Post, PlanTableRow
 from .parse_google_doc import read_structural_elements
 
 load_dotenv()
@@ -38,7 +38,8 @@ def get_events() -> Iterator[Event]:
         range='Plan!A1:L10000',
         majorDimension='ROWS'
     ).execute()
-    return parse_events_from_plan(plan_table['values'])
+    if len(plan_table) > 2:
+        return parse_events_from_plan(plan_table['values'])
 
 
 @retry_on_network_error
@@ -79,44 +80,43 @@ def set_post_status(event: Event, socials: str | list | tuple, status: str):
 @retry_on_network_error
 def renew_dashboard():
     service = login('sheets', version='v4')
+    dashboard_table = service.spreadsheets().values().get(
+        spreadsheetId=_spreadsheet_id,
+        range='Dashboard!A1:L10000',
+        majorDimension='ROWS'
+    ).execute()
     plan_table = service.spreadsheets().values().get(
         spreadsheetId=_spreadsheet_id,
         range='Plan!A1:L10000',
         majorDimension='ROWS'
     ).execute()
-    events = parse_events_from_plan(plan_table['values'])
-    data = []
+    batch_update = []
     sheet_requests = []
-    for event in events:
-        statuses = {
-            post.social: post.status
-            for post in event.posts
-        }
-        first_row = (event.line - 2) * 3 - 1
+    for row in plan_table['values']:
+        parsed_row = PlanTableRow(row)
+        if not parsed_row.title:
+            continue
+        statuses = {'VK': parsed_row.vk_status,
+                    'TG': parsed_row.tg_status,
+                    'OK': parsed_row.ok_status, }
+        first_row_on_dashboard = (row.line - 2) * 3 - 1
 
-        data.append(
-            {
-                'range': f'Dashboard!A{first_row}:B{first_row + 2}',
-                'majorDimension': 'ROWS',
-                'values': [
-                    [event.title, 'VK'],
-                    ['', 'TG'],
-                    ['', 'OK']
-                ]
-            }
-        )
-        sheet_requests.append(
-            {"mergeCells": {"range": {'sheetId': 737766278,
-                                      'startRowIndex': first_row - 1,
-                                      'endRowIndex': first_row + 2,
-                                      'startColumnIndex': 0,
-                                      'endColumnIndex': 1},
-                            "mergeType": 'MERGE_COLUMNS'}})
+        batch_update.append({'range': f'Dashboard!A{first_row_on_dashboard}:B{first_row_on_dashboard + 2}',
+                             'majorDimension': 'ROWS',
+                             'values': [[parsed_row.title, 'VK'],
+                                        ['', 'TG'],
+                                        ['', 'OK']]})
+        sheet_requests.append({"mergeCells": {"range": {'sheetId': 737766278,
+                                                        'startRowIndex': first_row_on_dashboard - 1,
+                                                        'endRowIndex': first_row_on_dashboard + 2,
+                                                        'startColumnIndex': 0,
+                                                        'endColumnIndex': 1},
+                                              "mergeType": 'MERGE_COLUMNS'}})
         # sheet_requests.append(
         #     {'updateCells':
         #          {"range": {'sheetId': 737766278,
-        #                     'startRowIndex': first_row - 1,
-        #                     'endRowIndex': first_row + 2,
+        #                     'startRowIndex': first_row_on_dashboard - 1,
+        #                     'endRowIndex': first_row_on_dashboard + 2,
         #                     'startColumnIndex': 0,
         #                     'endColumnIndex': 1},
         #           'rows': [{'values': [{'userEnteredFormat': {'backgroundColor': {'red': 1, 'green': 0, 'blue': 0}}},
@@ -128,7 +128,7 @@ def renew_dashboard():
         # pprint(sheet_requests)
         service.spreadsheets().values().batchUpdate(spreadsheetId=_spreadsheet_id, body={
             'valueInputOption': 'USER_ENTERED',
-            'data': data
+            'batch_update': batch_update
         }).execute()
         service.spreadsheets().batchUpdate(
             spreadsheetId=_spreadsheet_id,
@@ -137,45 +137,44 @@ def renew_dashboard():
             }
         ).execute()
 
+        if len(dashboard_table - 1) > len((plan_table - 2) * 3):
+            pass  # чистить не нужные строки в dashboard
+
 
 def parse_events_from_plan(table_rows: list[list]) -> Iterator[Event]:
-    for row_num, row in enumerate(table_rows[2:], start=3):
-        if empty_cell_num := 12 - len(row):  # добавляем пустые ячейки в конце строки, если нужно
-            row.extend([''] * empty_cell_num)
-        title, text_url, img_url, *vk_tg_ok_publishing = row
-        if not title:
-            continue
-        vk_status, vk_publish_date, vk_publish_time, *tg_ok_publishing = vk_tg_ok_publishing
-        tg_status, tg_publish_date, tg_publish_time, *ok_publishing = tg_ok_publishing
-        ok_status, ok_publish_date, ok_publish_time = ok_publishing
+    for row_num, table_row in enumerate(table_rows[2:], start=3):
 
-        event = Event(line=row_num, title=title, img_url=img_url, posts=list(), text_url=text_url)
-        if not vk_status == 'posted':
+        row = PlanTableRow(table_row)
+        if not row.title:
+            continue
+
+        event = Event(line=row_num, title=row.title, img_url=row.img_url, posts=list(), text_url=row.text_url)
+        if not row.vk_status == 'posted':
             add_post_to_event(
                 event,
                 social='vk',
-                status_field=vk_status,
-                publish_date_raw=vk_publish_date,
-                publish_time_raw=vk_publish_time
+                status_field=row.vk_status,
+                publish_date_raw=row.vk_publish_date,
+                publish_time_raw=row.vk_publish_time
             )
-        if not tg_status == 'posted':
+        if not row.tg_status == 'posted':
             add_post_to_event(
                 event,
                 social='tg',
-                status_field=tg_status,
-                publish_date_raw=tg_publish_date,
-                publish_time_raw=tg_publish_time
+                status_field=row.tg_status,
+                publish_date_raw=row.tg_publish_date,
+                publish_time_raw=row.tg_publish_time
             )
-        if not ok_status == 'posted':
+        if not row.ok_status == 'posted':
             add_post_to_event(
                 event,
                 social='ok',
-                status_field=ok_status,
-                publish_date_raw=ok_publish_date,
-                publish_time_raw=ok_publish_time
+                status_field=row.ok_status,
+                publish_date_raw=row.ok_publish_date,
+                publish_time_raw=row.ok_publish_time
             )
-
-        yield event
+        if event.posts:
+            yield event
 
 
 def add_post_to_event(
