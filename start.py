@@ -67,21 +67,20 @@ def main():
     while True:
         events = get_events()
         for event in events:
-            if event.posts:
-                if event.text_url:
-                    try:
-                        event.text = get_post_text(event.text_url)
-                    except (MissingSchema, HTTPError, HttpError):
-                        set_post_status(event, ['vk', 'tg', 'ok'], 'error')
-                        continue
-                if event.img_url:
-                    try:
-                        event.img_file_name = get_img_file_name(event.img_url)
-                        get_image(event.img_url, event.img_file_name)
-                    except (MissingSchema, HTTPError):
-                        set_post_status(event, ['vk', 'tg', 'ok'], 'error')
-                        continue
-                post_by_social(event)
+            if event.text_url:
+                try:
+                    event.text = get_post_text(event.text_url)
+                except (MissingSchema, HTTPError, HttpError):
+                    set_post_status(event, ['vk', 'tg', 'ok'], 'error')
+                    continue
+            if event.img_url:
+                try:
+                    event.img_file_name = get_img_file_name(event.img_url)
+                    get_image(event.img_url, event.img_file_name)
+                except (MissingSchema, HTTPError):
+                    set_post_status(event, ['vk', 'tg', 'ok'], 'error')
+                    continue
+            post_by_social(event)
         renew_dashboard()
         shutil.rmtree('images', ignore_errors=True)
         time.sleep(3)
