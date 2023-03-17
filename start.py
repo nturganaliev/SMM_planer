@@ -82,8 +82,8 @@ def main():
                     set_post_status(event, ['vk', 'tg', 'ok'], 'error')
                     continue
             post_by_social(event)
-        renew_dashboard()
         shutil.rmtree('images', ignore_errors=True)
+        renew_dashboard()
         time.sleep(3)
 
 
