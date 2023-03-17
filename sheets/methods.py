@@ -94,6 +94,8 @@ def renew_dashboard():
     index_correction = 1
     title_column = 0
     socials_column = 1
+    events_in_dashboard = (len(dashboard_table['values']) - dashboard_headers_number) / socials_number
+    events_in_plan = len(plan_table['values']) - plan_headers_number
     background_colors = {
         'normal': {'red': 1, 'green': 0.95, 'blue': 0.8},
         'error': {'red': 1, 'green': 0.5, 'blue': 0.5},
@@ -135,8 +137,7 @@ def renew_dashboard():
                             'cell': {'userEnteredFormat': {'verticalAlignment': 'TOP',
                                                            'textFormat': {'bold': True},
                                                            'backgroundColor': background_colors['normal']}},
-                            'fields': 'userEnteredFormat'}}
-        ])
+                            'fields': 'userEnteredFormat'}}])
         formatting_requests.append(
             {'updateCells': {
                 'range': socials_range,
@@ -145,9 +146,17 @@ def renew_dashboard():
                     {'values': [{'userEnteredFormat': {'backgroundColor': background_colors[parsed_row.tg_status]}}]},
                     {'values': [{'userEnteredFormat': {'backgroundColor': background_colors[parsed_row.ok_status]}}]}
                 ],
-                'fields': 'userEnteredFormat'
-            }}
-        )
+                'fields': 'userEnteredFormat'}})
+
+    if events_in_dashboard > events_in_plan:
+        start_index = events_in_plan * socials_number + dashboard_headers_number
+        formatting_requests.append({
+            "deleteDimension": {
+                "range": {
+                    "sheetId": sheet_id,
+                    "dimension": "ROWS",
+                    "startIndex": start_index,
+                    "endIndex": start_index + 30}}})
 
     service.spreadsheets().values().batchUpdate(spreadsheetId=_spreadsheet_id, body={
         'valueInputOption': 'USER_ENTERED',
@@ -160,11 +169,6 @@ def renew_dashboard():
             "requests": formatting_requests
         }
     ).execute()
-
-    len_dashboard = len(dashboard_table) - dashboard_headers_number
-    len_plan = (len(plan_table) - plan_headers_number)
-    if len_dashboard > len_plan * socials_number:
-        pass  # чистить не нужные строки в dashboard
 
 
 def parse_events_from_plan(table_rows: list[list]) -> Iterator[Event]:
