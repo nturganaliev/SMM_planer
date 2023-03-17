@@ -1,6 +1,5 @@
 import json
 import os
-from pprint import pprint
 from typing import Iterator
 from urllib.parse import urlparse
 
@@ -31,7 +30,7 @@ def login(service_name: str, version: str) -> Service:
 
 
 @retry_on_network_error
-def get_events() -> Iterator[Event]:
+def get_active_events() -> Iterator[Event]:
     service = login('sheets', version='v4')
     plan_table = service.spreadsheets().values().get(
         spreadsheetId=_spreadsheet_id,
@@ -48,8 +47,6 @@ def get_post_text(text_url: str) -> str:
     parsed_url = urlparse(text_url)
     document_id = parsed_url.path.lstrip('/document/d/').split('/')[0]
     document = service.documents().get(documentId=document_id).execute()
-    with open('doc.json', 'w') as file:
-        json.dump(document, file)
     return read_structural_elements(document.get('body').get('content'))
 
 
@@ -63,18 +60,15 @@ def set_post_status(event: Event, socials: str | list | tuple, status: str):
     data = []
     for socials in socials:
         column = status_columns[socials]
-        data.append(
-            {
-                'range': f'Plan!{column}{event.line}:{column}{event.line}',
-                'majorDimension': 'ROWS',
-                'values': [[status]]
-            }
-        )
+        data.append({'range': f'Plan!{column}{event.line}:{column}{event.line}',
+                     'majorDimension': 'ROWS',
+                     'values': [[status]]})
 
-    service.spreadsheets().values().batchUpdate(spreadsheetId=_spreadsheet_id, body={
-        'valueInputOption': 'USER_ENTERED',
-        'data': data
-    }).execute()
+    service.spreadsheets().values().batchUpdate(
+        spreadsheetId=_spreadsheet_id,
+        body={'valueInputOption': 'USER_ENTERED',
+              'data': data}
+    ).execute()
 
 
 @retry_on_network_error
@@ -115,6 +109,16 @@ def renew_dashboard():
             continue
 
         post_row_on_dashboard = (row_number - plan_headers_number) * socials_number - dashboard_headers_number
+        title_range = {'sheetId': sheet_id,
+                       'startRowIndex': post_row_on_dashboard - dashboard_headers_number,
+                       'endRowIndex': post_row_on_dashboard + socials_number - index_correction,
+                       'startColumnIndex': title_column,
+                       'endColumnIndex': title_column + index_correction}
+        socials_range = {'sheetId': sheet_id,
+                         'startRowIndex': post_row_on_dashboard - dashboard_headers_number,
+                         'endRowIndex': post_row_on_dashboard - dashboard_headers_number + socials_number + index_correction,
+                         'startColumnIndex': socials_column,
+                         'endColumnIndex': socials_column + index_correction}
 
         batch_update.append(
             {'range': f'Dashboard!A{post_row_on_dashboard}:'
@@ -123,12 +127,6 @@ def renew_dashboard():
              'values': [[parsed_row.title, 'VK'],
                         ['', 'TG'],
                         ['', 'OK']]})
-
-        title_range = {'sheetId': sheet_id,
-                       'startRowIndex': post_row_on_dashboard - dashboard_headers_number,
-                       'endRowIndex': post_row_on_dashboard + socials_number - index_correction,
-                       'startColumnIndex': title_column,
-                       'endColumnIndex': title_column + index_correction}
 
         formatting_requests.extend([
             {"mergeCells": {"range": title_range,
@@ -141,13 +139,7 @@ def renew_dashboard():
         ])
         formatting_requests.append(
             {'updateCells': {
-                'range': {
-                    'sheetId': sheet_id,
-                    'startRowIndex': post_row_on_dashboard - dashboard_headers_number,
-                    'endRowIndex': post_row_on_dashboard - dashboard_headers_number + socials_number + index_correction,
-                    'startColumnIndex': socials_column,
-                    'endColumnIndex': socials_column + index_correction
-                },
+                'range': socials_range,
                 'rows': [
                     {'values': [{'userEnteredFormat': {'backgroundColor': background_colors[parsed_row.vk_status]}}]},
                     {'values': [{'userEnteredFormat': {'backgroundColor': background_colors[parsed_row.tg_status]}}]},
@@ -178,45 +170,51 @@ def renew_dashboard():
 def parse_events_from_plan(table_rows: list[list]) -> Iterator[Event]:
     for row_num, table_row in enumerate(table_rows[2:], start=3):
 
-        row = PlanTableRow(table_row)
-        if not row.title:
+        parsed_row = PlanTableRow(table_row)
+        if not parsed_row.title:
             continue
 
-        event = Event(line=row_num, title=row.title, img_url=row.img_url, posts=list(), text_url=row.text_url)
-        if not row.vk_status == 'posted':
+        event = Event(
+            line=row_num,
+            title=parsed_row.title,
+            img_url=parsed_row.img_url,
+            text_url=parsed_row.text_url,
+            posts=list()
+        )
+
+        if not parsed_row.vk_status == 'posted':
             add_post_to_event(
                 event,
                 social='vk',
-                status_field=row.vk_status,
-                publish_date_raw=row.vk_publish_date,
-                publish_time_raw=row.vk_publish_time
+                status_field=parsed_row.vk_status,
+                publish_date_raw=parsed_row.vk_publish_date,
+                publish_time_raw=parsed_row.vk_publish_time
             )
-        if not row.tg_status == 'posted':
+        if not parsed_row.tg_status == 'posted':
             add_post_to_event(
                 event,
                 social='tg',
-                status_field=row.tg_status,
-                publish_date_raw=row.tg_publish_date,
-                publish_time_raw=row.tg_publish_time
+                status_field=parsed_row.tg_status,
+                publish_date_raw=parsed_row.tg_publish_date,
+                publish_time_raw=parsed_row.tg_publish_time
             )
-        if not row.ok_status == 'posted':
+        if not parsed_row.ok_status == 'posted':
             add_post_to_event(
                 event,
                 social='ok',
-                status_field=row.ok_status,
-                publish_date_raw=row.ok_publish_date,
-                publish_time_raw=row.ok_publish_time
+                status_field=parsed_row.ok_status,
+                publish_date_raw=parsed_row.ok_publish_date,
+                publish_time_raw=parsed_row.ok_publish_time
             )
         if event.posts:
             yield event
 
 
-def add_post_to_event(
-        event: Event,
-        social: str,
-        status_field: str,
-        publish_date_raw: str,
-        publish_time_raw: str):
+def add_post_to_event(event: Event,
+                      social: str,
+                      status_field: str,
+                      publish_date_raw: str,
+                      publish_time_raw: str):
     try:
         post = Post(
             social=social,
