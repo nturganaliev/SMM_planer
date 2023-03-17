@@ -22,6 +22,3 @@ def create_post(post_text, post_image=None, group_id=None):
         image_for_post = f'photo{uploaded_image[0]["owner_id"]}_{uploaded_image[0]["id"]}'
         vk.wall.post(message=post_text, owner_id=f'-{group_id}', attachments=image_for_post, from_group=1)
         return True
-
-
-create_post('Text')
