@@ -37,8 +37,9 @@ def get_active_events() -> Iterator[Event]:
         range='Plan!A1:L10000',
         majorDimension='ROWS'
     ).execute()
+    additional_social = plan_table['values'][0][12][-2:].lower()
     if len(plan_table) > 2:
-        return parse_events_from_plan(plan_table['values'])
+        return parse_events_from_plan(plan_table['values'], additional_social)
 
 
 @retry_on_network_error
@@ -171,7 +172,7 @@ def renew_dashboard():
     ).execute()
 
 
-def parse_events_from_plan(table_rows: list[list]) -> Iterator[Event]:
+def parse_events_from_plan(table_rows: list[list], additional_social: str) -> Iterator[Event]:
     for row_num, table_row in enumerate(table_rows[2:], start=3):
 
         parsed_row = PlanTableRow(table_row)
@@ -210,15 +211,25 @@ def parse_events_from_plan(table_rows: list[list]) -> Iterator[Event]:
                 publish_date_raw=parsed_row.ok_publish_date,
                 publish_time_raw=parsed_row.ok_publish_time
             )
+        if not parsed_row.ad_status == 'posted':
+            add_post_to_event(
+                event,
+                social=f'ad_{additional_social}',
+                status_field=parsed_row.ad_status,
+                publish_date_raw=parsed_row.ad_publish_date,
+                publish_time_raw=parsed_row.ad_publish_time
+            )
         if event.posts:
             yield event
 
 
-def add_post_to_event(event: Event,
-                      social: str,
-                      status_field: str,
-                      publish_date_raw: str,
-                      publish_time_raw: str):
+def add_post_to_event(
+        event: Event,
+        social: str,
+        status_field: str,
+        publish_date_raw: str,
+        publish_time_raw: str
+):
     try:
         post = Post(
             social=social,
