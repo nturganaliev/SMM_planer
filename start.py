@@ -19,7 +19,7 @@ from vk.vk_posting_bot import create_post as post_to_vk
 
 
 @retry_on_network_error
-def post_to_social(post_func: Callable, social: str, event: Event, additional_social: bool = False):
+def post_to_social(post_func: Callable, social: str, event: Event, group_id: int = None):
     post_text = f'{event.title}\n\n{event.text}' if event.text else event.title
     if social == 'ok':
         img_file_path = event.img_url
@@ -27,7 +27,7 @@ def post_to_social(post_func: Callable, social: str, event: Event, additional_so
         img_file_path = os.path.join('images', event.img_file_name) if event.img_file_name else None
 
     try:
-        is_posted = post_func(post_text, img_file_path, additional_social)
+        is_posted = post_func(post_text, img_file_path, group_id)
         if not is_posted:
             raise ValueError
     except (BadRequest, ValueError, TypeError):
@@ -38,20 +38,13 @@ def post_to_social(post_func: Callable, social: str, event: Event, additional_so
 
 def post_by_social(event: Event):
     for post in event.posts:
-        if post.social.startswith('ad_'):
-            social = post.social.lstrip('ad_')
-            additional_social = True
-        else:
-            social = post.social
-            additional_social = False
-
         now = datetime.now()
-        if social == 'vk' and post.publish_at <= now:
-            post_to_social(post_to_vk, social, event, additional_social)
-        if social == 'tg' and post.publish_at <= now:
-            post_to_social(post_to_tg, social, event, additional_social)
-        if social == 'ok' and post.publish_at <= now:
-            post_to_social(post_to_ok, social, event, additional_social)
+        if post.social == 'vk' and post.publish_at <= now:
+            post_to_social(post_to_vk, post.social, event, group_id=event.vk_group_id)
+        if post.social == 'tg' and post.publish_at <= now:
+            post_to_social(post_to_tg, post.social, event)
+        if post.social == 'ok' and post.publish_at <= now:
+            post_to_social(post_to_ok, post.social, event)
 
 
 @retry_on_network_error
@@ -73,7 +66,7 @@ def get_img_file_name(img_url: str) -> str:
     return parsed_url.path.split('/')[-1]
 
 
-@restart_on_error
+# @restart_on_error
 def main():
     while True:
         events = get_active_events()

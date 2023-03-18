@@ -9,6 +9,7 @@ class Event:
     posts: list
     img_url: str
     text_url: str
+    vk_group_id: int
     text: str = None
     img_file_name: str = None
 
@@ -28,10 +29,11 @@ class Post:
 class PlanTableRow:
 
     def __init__(self, table_row: list):
-        if empty_cell_num := 15 - len(table_row):  # добавляем пустые ячейки в конце строки, если нужно
-            table_row.extend([''] * empty_cell_num)
+        standard_columns_num = 12
+        if empty_cell_num := standard_columns_num - len(table_row):
+            table_row.extend([''] * empty_cell_num)  # добавляем пустые ячейки в конце строки, если нужно
         self.title, self.text_url, self.img_url, *vk_tg_ok_ad = table_row
         self.vk_status, self.vk_publish_date, self.vk_publish_time, *tg_ok_ad = vk_tg_ok_ad
         self.tg_status, self.tg_publish_date, self.tg_publish_time, *ok_ad = tg_ok_ad
         self.ok_status, self.ok_publish_date, self.ok_publish_time, *ad = ok_ad
-        self.ad_status, self.ad_publish_date, self.ad_publish_time = ad
+        self.vk_group, *_ = ad

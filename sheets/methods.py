@@ -34,12 +34,11 @@ def get_active_events() -> Iterator[Event]:
     service = login('sheets', version='v4')
     plan_table = service.spreadsheets().values().get(
         spreadsheetId=_spreadsheet_id,
-        range='Plan!A1:L10000',
+        range='Plan!A1:M10000',
         majorDimension='ROWS'
     ).execute()
-    additional_social = plan_table['values'][0][12][-2:].lower()
     if len(plan_table) > 2:
-        return parse_events_from_plan(plan_table['values'], additional_social)
+        return parse_events_from_plan(plan_table['values'])
 
 
 @retry_on_network_error
@@ -54,7 +53,7 @@ def get_post_text(text_url: str) -> str:
 @retry_on_network_error
 def set_post_status(event: Event, socials: str | list | tuple, status: str):
     service = login('sheets', version='v4')
-    status_columns = {'vk': 'D', 'tg': 'G', 'ok': 'J'}
+    status_columns = {'vk': 'D', 'tg': 'G', 'ok': 'J', 'ad_тг': 'M', 'ad_ок': 'M', 'ad_вк': 'M'}
     if isinstance(socials, str):
         socials = [socials]
 
@@ -82,7 +81,7 @@ def renew_dashboard():
     ).execute()
     plan_table = service.spreadsheets().values().get(
         spreadsheetId=_spreadsheet_id,
-        range='Plan!A1:L10000',
+        range='Plan!A1:M10000',
         majorDimension='ROWS'
     ).execute()
     if len(plan_table) < 2:
@@ -106,12 +105,14 @@ def renew_dashboard():
 
     batch_update = []
     formatting_requests = []
-    for row_number, row in enumerate(plan_table['values'][2:], start=3):
+    for row_number_in_plan, row in enumerate(plan_table['values'][2:], start=plan_headers_number):
         parsed_row = PlanTableRow(row)
         if not parsed_row.title:
             continue
 
-        post_row_on_dashboard = (row_number - plan_headers_number) * socials_number - dashboard_headers_number
+        post_row_on_dashboard = (row_number_in_plan - plan_headers_number) * socials_number \
+                                + dashboard_headers_number + index_correction
+
         title_range = {'sheetId': sheet_id,
                        'startRowIndex': post_row_on_dashboard - dashboard_headers_number,
                        'endRowIndex': post_row_on_dashboard + socials_number - index_correction,
@@ -172,7 +173,9 @@ def renew_dashboard():
     ).execute()
 
 
-def parse_events_from_plan(table_rows: list[list], additional_social: str) -> Iterator[Event]:
+def parse_events_from_plan(table_rows: list[list]) -> Iterator[Event]:
+    vk_groups = {'ВК группа 1': os.getenv('VK_GROUP_ID1'), 'ВК группа 2': os.getenv('VK_GROUP_ID2')}
+
     for row_num, table_row in enumerate(table_rows[2:], start=3):
 
         parsed_row = PlanTableRow(table_row)
@@ -184,9 +187,10 @@ def parse_events_from_plan(table_rows: list[list], additional_social: str) -> It
             title=parsed_row.title,
             img_url=parsed_row.img_url,
             text_url=parsed_row.text_url,
+            vk_group_id=vk_groups[parsed_row.vk_group],
             posts=list()
         )
-
+        print(event)
         if not parsed_row.vk_status == 'posted':
             add_post_to_event(
                 event,
@@ -210,14 +214,6 @@ def parse_events_from_plan(table_rows: list[list], additional_social: str) -> It
                 status_field=parsed_row.ok_status,
                 publish_date_raw=parsed_row.ok_publish_date,
                 publish_time_raw=parsed_row.ok_publish_time
-            )
-        if not parsed_row.ad_status == 'posted':
-            add_post_to_event(
-                event,
-                social=f'ad_{additional_social}',
-                status_field=parsed_row.ad_status,
-                publish_date_raw=parsed_row.ad_publish_date,
-                publish_time_raw=parsed_row.ad_publish_time
             )
         if event.posts:
             yield event

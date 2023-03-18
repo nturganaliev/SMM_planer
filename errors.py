@@ -35,4 +35,4 @@ def restart_on_error(func):
                 logging.error(f'{datetime.now().strftime("%Y-%m-%d %H.%M.%S")}: {ex}')
                 continue
 
-    return
+    return wrapper
