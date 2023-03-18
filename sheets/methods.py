@@ -95,7 +95,7 @@ def renew_dashboard():
     title_column = 0
     socials_column = 1
     events_in_dashboard = (len(dashboard_table['values']) - dashboard_headers_number) / socials_number
-    events_in_plan = len(plan_table['values']) - plan_headers_number
+    events_in_plan = count_events_in_plan(plan_table['values'][plan_headers_number:])
     background_colors = {
         'normal': {'red': 1, 'green': 0.95, 'blue': 0.8},
         'error': {'red': 1, 'green': 0.5, 'blue': 0.5},
@@ -187,7 +187,7 @@ def parse_events_from_plan(table_rows: list[list]) -> Iterator[Event]:
             title=parsed_row.title,
             img_url=parsed_row.img_url,
             text_url=parsed_row.text_url,
-            vk_group_id=vk_groups[parsed_row.vk_group],
+            vk_group_id=vk_groups.get(parsed_row.vk_group),
             posts=list()
         )
 
@@ -239,3 +239,16 @@ def add_post_to_event(
         if status_field == 'error':
             set_post_status(event, social, '')
         event.posts.append(post)
+
+
+def count_events_in_plan(rows: list[list]) -> int:
+    count = 0
+    for row in rows:
+        try:
+            title = row[0]
+        except IndexError:
+            continue
+        else:
+            if title:
+                count += 1
+    return count

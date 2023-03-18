@@ -30,7 +30,7 @@ def post_to_social(post_func: Callable, social: str, event: Event, group_id: int
         is_posted = post_func(post_text, img_file_path, group_id)
         if not is_posted:
             raise ValueError
-    except (BadRequest, ValueError, TypeError):
+    except (BadRequest, ValueError, TypeError, KeyError):
         set_post_status(event, social, 'error')
     else:
         set_post_status(event, social, 'posted')
@@ -66,7 +66,7 @@ def get_img_file_name(img_url: str) -> str:
     return parsed_url.path.split('/')[-1]
 
 
-@restart_on_error
+# @restart_on_error
 def main():
     while True:
         events = get_active_events()
@@ -85,8 +85,8 @@ def main():
                     set_post_status(event, ['vk', 'tg', 'ok'], 'error')
                     continue
             post_by_social(event)
+            renew_dashboard()
         shutil.rmtree('images', ignore_errors=True)
-        renew_dashboard()
 
 
 if __name__ == '__main__':
