@@ -179,8 +179,6 @@ def parse_events_from_plan(table_rows: list[list]) -> Iterator[Event]:
     for row_num, table_row in enumerate(table_rows[2:], start=3):
 
         parsed_row = PlanTableRow(table_row)
-        if not parsed_row.title:
-            continue
 
         event = Event(
             line=row_num,
@@ -188,8 +186,11 @@ def parse_events_from_plan(table_rows: list[list]) -> Iterator[Event]:
             img_url=parsed_row.img_url,
             text_url=parsed_row.text_url,
             vk_group_id=vk_groups.get(parsed_row.vk_group),
-            posts=list()
-        )
+            posts=list())
+
+        if not event.title:
+            set_post_status(event, ['vk', 'tg', 'ok'], '')
+            continue
 
         if not parsed_row.vk_status == 'posted':
             add_post_to_event(
@@ -197,24 +198,21 @@ def parse_events_from_plan(table_rows: list[list]) -> Iterator[Event]:
                 social='vk',
                 status_field=parsed_row.vk_status,
                 publish_date_raw=parsed_row.vk_publish_date,
-                publish_time_raw=parsed_row.vk_publish_time
-            )
+                publish_time_raw=parsed_row.vk_publish_time)
         if not parsed_row.tg_status == 'posted':
             add_post_to_event(
                 event,
                 social='tg',
                 status_field=parsed_row.tg_status,
                 publish_date_raw=parsed_row.tg_publish_date,
-                publish_time_raw=parsed_row.tg_publish_time
-            )
+                publish_time_raw=parsed_row.tg_publish_time)
         if not parsed_row.ok_status == 'posted':
             add_post_to_event(
                 event,
                 social='ok',
                 status_field=parsed_row.ok_status,
                 publish_date_raw=parsed_row.ok_publish_date,
-                publish_time_raw=parsed_row.ok_publish_time
-            )
+                publish_time_raw=parsed_row.ok_publish_time)
         if event.posts:
             yield event
 
@@ -236,7 +234,7 @@ def add_post_to_event(
     except ValueError:
         set_post_status(event, social, 'error')
     else:
-        if status_field == 'error':
+        if check_urls(event.img_url) and check_urls(event.text_url) and status_field == 'error':
             set_post_status(event, social, '')
         event.posts.append(post)
 
@@ -252,3 +250,8 @@ def count_events_in_plan(rows: list[list]) -> int:
             if title:
                 count += 1
     return count
+
+
+def check_urls(url):
+    if not url or url.startswith('http'):
+        return True
