@@ -190,7 +190,7 @@ def parse_events_from_plan(table_rows: list[list]) -> Iterator[Event]:
             vk_group_id=vk_groups[parsed_row.vk_group],
             posts=list()
         )
-        print(event)
+
         if not parsed_row.vk_status == 'posted':
             add_post_to_event(
                 event,
