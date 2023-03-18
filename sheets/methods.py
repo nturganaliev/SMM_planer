@@ -1,4 +1,3 @@
-import json
 import os
 from typing import Iterator
 from urllib.parse import urlparse
@@ -69,6 +68,7 @@ def set_post_status(event: Event, socials: str | list | tuple, status: str):
         body={'valueInputOption': 'USER_ENTERED',
               'data': data}
     ).execute()
+    renew_dashboard()
 
 
 @retry_on_network_error
