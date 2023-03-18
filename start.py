@@ -10,7 +10,7 @@ from requests import HTTPError
 from requests.exceptions import MissingSchema
 from telegram.error import BadRequest
 
-from errors import retry_on_network_error
+from errors import retry_on_network_error, restart_on_error
 from sheets.classes import Event
 from sheets.methods import get_active_events, renew_dashboard, set_post_status, get_post_text
 from ok.post_to_ok import post_to_ok_group as post_to_ok
@@ -65,6 +65,7 @@ def get_img_file_name(img_url: str) -> str:
     return parsed_url.path.split('/')[-1]
 
 
+@restart_on_error
 def main():
     while True:
         events = get_active_events()

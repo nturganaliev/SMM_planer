@@ -1,4 +1,6 @@
+import logging
 import time
+from datetime import datetime
 
 from requests.exceptions import ChunkedEncodingError
 
@@ -18,3 +20,19 @@ def retry_on_network_error(func):
                 continue
 
     return wrapper
+
+
+def restart_on_error(func):
+    def wrapper(*args, **kwargs):
+        logging.basicConfig(
+            filename=f'{datetime.now().strftime("%Y-%m-%d %H.%M")}.log',
+            level=logging.WARNING
+        )
+        while True:
+            try:
+                func(*args, **kwargs)
+            except Exception as ex:
+                logging.error(f'{datetime.now().strftime("%Y-%m-%d %H.%M.%S")}: {ex}')
+                continue
+
+    return
