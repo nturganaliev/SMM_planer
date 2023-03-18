@@ -9,6 +9,7 @@ from google.api.service_pb2 import Service
 from oauth2client.service_account import ServiceAccountCredentials
 
 from errors import retry_on_network_error
+from helpers import count_events_in_plan, check_urls
 from .classes import Event, Post, PlanTableRow
 from .parse_google_doc import read_structural_elements
 
@@ -52,7 +53,7 @@ def get_post_text(text_url: str) -> str:
 @retry_on_network_error
 def set_post_status(event: Event, socials: str | list | tuple, status: str):
     service = login('sheets', version='v4')
-    status_columns = {'vk': 'D', 'tg': 'G', 'ok': 'J', 'ad_тг': 'M', 'ad_ок': 'M', 'ad_вк': 'M'}
+    status_columns = {'vk': 'D', 'tg': 'G', 'ok': 'J'}
     if isinstance(socials, str):
         socials = [socials]
 
@@ -105,12 +106,12 @@ def renew_dashboard():
 
     batch_update = []
     formatting_requests = []
-    for row_number_in_plan, row in enumerate(plan_table['values'][2:], start=plan_headers_number):
+    for row_number_in_plan, row in enumerate(plan_table['values'][2:]):
         parsed_row = PlanTableRow(row)
         if not parsed_row.title:
             continue
 
-        post_row_on_dashboard = (row_number_in_plan - plan_headers_number) * socials_number \
+        post_row_on_dashboard = row_number_in_plan * socials_number \
                                 + dashboard_headers_number + index_correction
 
         title_range = {'sheetId': sheet_id,
@@ -237,21 +238,3 @@ def add_post_to_event(
         if check_urls(event.img_url) and check_urls(event.text_url) and status_field == 'error':
             set_post_status(event, social, '')
         event.posts.append(post)
-
-
-def count_events_in_plan(rows: list[list]) -> int:
-    count = 0
-    for row in rows:
-        try:
-            title = row[0]
-        except IndexError:
-            continue
-        else:
-            if title:
-                count += 1
-    return count
-
-
-def check_urls(url):
-    if not url or url.startswith('http'):
-        return True

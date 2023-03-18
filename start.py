@@ -2,7 +2,6 @@ import os
 import shutil
 from datetime import datetime
 from typing import Callable
-from urllib.parse import urlparse
 
 import requests
 from googleapiclient.errors import HttpError
@@ -11,8 +10,9 @@ from requests.exceptions import MissingSchema
 from telegram.error import BadRequest
 
 from errors import retry_on_network_error, restart_on_error
+from helpers import get_img_file_name
 from sheets.classes import Event
-from sheets.methods import get_active_events, renew_dashboard, set_post_status, get_post_text
+from sheets.methods import get_active_events, set_post_status, get_post_text, renew_dashboard
 from ok.post_to_ok import post_to_ok_group as post_to_ok
 from tg.telegram_posting_bot import create_post as post_to_tg
 from vk.vk_posting_bot import create_post as post_to_vk
@@ -61,11 +61,6 @@ def get_image(img_url: str, img_file_name: str):
             image_file.write(response.content)
 
 
-def get_img_file_name(img_url: str) -> str:
-    parsed_url = urlparse(img_url)
-    return parsed_url.path.split('/')[-1]
-
-
 @restart_on_error
 def main():
     while True:
@@ -86,6 +81,7 @@ def main():
                     continue
             post_by_social(event)
         shutil.rmtree('images', ignore_errors=True)
+        renew_dashboard()
 
 
 if __name__ == '__main__':
