@@ -28,9 +28,10 @@ class Post:
 class PlanTableRow:
 
     def __init__(self, table_row: list):
-        if empty_cell_num := 12 - len(table_row):  # добавляем пустые ячейки в конце строки, если нужно
+        if empty_cell_num := 15 - len(table_row):  # добавляем пустые ячейки в конце строки, если нужно
             table_row.extend([''] * empty_cell_num)
-        self.title, self.text_url, self.img_url, *vk_tg_ok_publishing = table_row
-        self.vk_status, self.vk_publish_date, self.vk_publish_time, *tg_ok_publishing = vk_tg_ok_publishing
-        self.tg_status, self.tg_publish_date, self.tg_publish_time, *ok_publishing = tg_ok_publishing
-        self.ok_status, self.ok_publish_date, self.ok_publish_time = ok_publishing
+        self.title, self.text_url, self.img_url, *vk_tg_ok_ad = table_row
+        self.vk_status, self.vk_publish_date, self.vk_publish_time, *tg_ok_ad = vk_tg_ok_ad
+        self.tg_status, self.tg_publish_date, self.tg_publish_time, *ok_ad = tg_ok_ad
+        self.ok_status, self.ok_publish_date, self.ok_publish_time, *ad = ok_ad
+        self.ad_status, self.ad_publish_date, self.ad_publish_time = ad
