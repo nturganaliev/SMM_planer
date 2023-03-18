@@ -1,6 +1,5 @@
 import os
 import shutil
-import time
 from datetime import datetime
 from typing import Callable
 from urllib.parse import urlparse
@@ -41,7 +40,6 @@ def post_by_social(event: Event):
         now = datetime.now()
         if post.social == 'vk' and post.publish_at <= now:
             post_to_social(post_to_vk, post.social, event)
-            time.sleep(2)
         if post.social == 'tg' and post.publish_at <= now:
             post_to_social(post_to_tg, post.social, event)
         if post.social == 'ok' and post.publish_at <= now:
@@ -87,7 +85,6 @@ def main():
             post_by_social(event)
         shutil.rmtree('images', ignore_errors=True)
         renew_dashboard()
-        time.sleep(3)
 
 
 if __name__ == '__main__':
