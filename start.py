@@ -3,12 +3,14 @@ import shutil
 from datetime import datetime
 from typing import Callable
 
+import pytz
 import requests
 from googleapiclient.errors import HttpError
 from requests import HTTPError
 from requests.exceptions import MissingSchema
 from telegram.error import BadRequest
 
+from config import TIME_ZONE
 from errors import retry_on_network_error, restart_on_error
 from helpers import get_img_file_name
 from sheets.classes import Event
@@ -38,7 +40,7 @@ def post_to_social(post_func: Callable, social: str, event: Event, group_id: int
 
 def post_by_social(event: Event):
     for post in event.posts:
-        now = datetime.now().astimezone(None)
+        now = datetime.now().astimezone(pytz.timezone(TIME_ZONE))
         if post.social == 'vk' and post.publish_at <= now:
             post_to_social(post_to_vk, post.social, event, group_id=event.vk_group_id)
         if post.social == 'tg' and post.publish_at <= now:
