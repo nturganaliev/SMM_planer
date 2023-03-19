@@ -20,7 +20,7 @@ class Post:
         publish_raw = ' - '.join([publish_date_raw, publish_time_raw])
         self.social = social
         self.status = 'posted' if status_field == 'posted' else 'waiting'
-        self.publish_at = datetime.strptime(publish_raw, '%d.%m.%Y - %H:%M:%S')
+        self.publish_at = datetime.strptime(publish_raw, '%d.%m.%Y - %H:%M:%S').astimezone(None)
 
     def __str__(self):
         return f'{self.social} : {self.publish_at} : {self.status}'

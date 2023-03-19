@@ -38,7 +38,7 @@ def post_to_social(post_func: Callable, social: str, event: Event, group_id: int
 
 def post_by_social(event: Event):
     for post in event.posts:
-        now = datetime.now()
+        now = datetime.now().astimezone(None)
         if post.social == 'vk' and post.publish_at <= now:
             post_to_social(post_to_vk, post.social, event, group_id=event.vk_group_id)
         if post.social == 'tg' and post.publish_at <= now:
